@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-
 from app.db import get_connection
 from app.routes import clients, contacts, documents, followups, projects, tasks
 

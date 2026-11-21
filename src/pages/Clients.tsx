@@ -169,12 +169,26 @@ function Clients() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const [activeProgram, setActiveProgram] = useState<Program | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all')
+  const [typeFilter, setTypeFilter] = useState<ClientType | 'all'>('all')
+  const [searchText, setSearchText] = useState('')
 
-  // The clients to show in the table, based on the selected tab
-  const visibleClients =
-    activeProgram === 'all'
-      ? clients
-      : clients.filter((client) => client.programs.includes(activeProgram))
+  const search = searchText.trim().toLowerCase()
+
+  // The clients to show in the table: a client must pass every filter
+  const visibleClients = clients.filter((client) => {
+    const matchesProgram = activeProgram === 'all' || client.programs.includes(activeProgram)
+    const matchesStatus = statusFilter === 'all' || client.status === statusFilter
+    const matchesType = typeFilter === 'all' || client.type === typeFilter
+    const matchesSearch =
+      search === '' ||
+      client.name.toLowerCase().includes(search) ||
+      client.primaryContact.toLowerCase().includes(search) ||
+      client.location.toLowerCase().includes(search) ||
+      (client.industry ?? '').toLowerCase().includes(search)
+
+    return matchesProgram && matchesStatus && matchesType && matchesSearch
+  })
 
   function handleSave(newClient: Client) {
     setClients([...clients, newClient])
@@ -216,20 +230,34 @@ function Clients() {
         </div>
 
         <div className="toolbar-filters">
-          <select defaultValue="all" aria-label="Filter by status">
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as ClientStatus | 'all')}
+            aria-label="Filter by status"
+          >
             <option value="all">All statuses</option>
             <option value="active">Active</option>
             <option value="waiting">Waiting on client</option>
             <option value="onboarding">Onboarding</option>
           </select>
 
-          <select defaultValue="all" aria-label="Filter by client type">
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value as ClientType | 'all')}
+            aria-label="Filter by client type"
+          >
             <option value="all">All types</option>
             <option value="business">Businesses</option>
             <option value="individual">Individuals</option>
           </select>
 
-          <input type="text" placeholder="Search clients..." />
+          <input
+            type="text"
+            placeholder="Search clients..."
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            aria-label="Search clients"
+          />
         </div>
       </div>
 
@@ -282,6 +310,10 @@ function Clients() {
             ))}
           </tbody>
         </table>
+
+        {visibleClients.length === 0 && (
+          <p className="empty-state">No clients match these filters.</p>
+        )}
       </div>
 
       {isModalOpen && (
