@@ -38,8 +38,8 @@ def list_clients():
     return clients
 
 
-class ClientCreate(BaseModel):
-    """What the Add Client form sends."""
+class ClientInput(BaseModel):
+    """What the Add client / Edit client form sends."""
 
     name: str = Field(min_length=1)
     type: Literal["business", "individual"]
@@ -50,10 +50,12 @@ class ClientCreate(BaseModel):
     programs: list[Literal["h2a", "h2b", "eb3"]] = []
 
 
-@router.post("", status_code=201)
-def create_client(client: ClientCreate):
-    # Businesses have a contact person. For individuals, the client is
-    # their own contact, and the form field holds their email or phone.
+def to_proc_params(client: ClientInput):
+    """Turns the form data into the values the stored procs expect.
+
+    Businesses have a contact person. For individuals, the client is
+    their own contact, and the form field holds their email or phone.
+    """
     if client.type == "business":
         contact_name, email, phone = client.primary_contact, None, None
         industry = client.industry or None
@@ -63,14 +65,34 @@ def create_client(client: ClientCreate):
         phone = None if email else client.primary_contact
         industry = None
 
+    return (client.name, client.type, industry, client.location, client.status,
+            contact_name, email, phone, client.programs)
+
+
+@router.post("", status_code=201)
+def create_client(client: ClientInput):
     with get_connection() as conn:
         new_id = conn.execute(
             "SELECT clients_create(%s, %s, %s, %s, %s, %s, %s, %s, %s) AS id",
-            (client.name, client.type, industry, client.location, client.status,
-             contact_name, email, phone, client.programs),
+            to_proc_params(client),
         ).fetchone()["id"]
 
     return {"id": new_id}
+
+
+@router.put("/{client_id}")
+def update_client(client_id: int, client: ClientInput):
+    with get_connection() as conn:
+        updated = conn.execute(
+            "SELECT clients_update(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) AS updated",
+            (client_id, *to_proc_params(client)),
+        ).fetchone()["updated"]
+
+    if not updated:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    return {"id": client_id}
+
 
 @router.delete("/{client_id}", status_code=204)
 def delete_client(client_id: int):

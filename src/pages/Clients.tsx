@@ -33,7 +33,7 @@ type ApiClient = {
   open_tasks: number
 }
 
-// What the Add Client form sends to POST /api/clients
+// What the Add / Edit client form sends to the API
 type NewClient = {
   name: string
   type: ClientType
@@ -87,13 +87,17 @@ const statusLabels: Record<ClientStatus, string> = {
   onboarding: 'Onboarding',
 }
 
-type AddClientModalProps = {
+type ClientModalProps = {
+  client: Client | null // null = adding a new client, a client = editing that client
   onClose: () => void
   onSave: (client: NewClient) => Promise<void>
 }
 
-function AddClientModal({ onClose, onSave }: AddClientModalProps) {
-  const [clientType, setClientType] = useState<ClientType>('business')
+// One popup for both "Add client" and "Edit client".
+// When editing, every field starts filled in with the client's current info.
+function ClientModal({ client, onClose, onSave }: ClientModalProps) {
+  const isEditing = client !== null
+  const [clientType, setClientType] = useState<ClientType>(client?.type ?? 'business')
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,7 +135,7 @@ function AddClientModal({ onClose, onSave }: AddClientModalProps) {
     >
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-client-title">
         <div className="modal-header">
-          <h3 id="add-client-title">Add client</h3>
+          <h3 id="add-client-title">{isEditing ? 'Edit client' : 'Add client'}</h3>
           <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
@@ -161,33 +165,57 @@ function AddClientModal({ onClose, onSave }: AddClientModalProps) {
               <label htmlFor="client-name">
                 {clientType === 'business' ? 'Company name' : 'Full name'}
               </label>
-              <input id="client-name" name="name" type="text" required autoFocus />
+              <input id="client-name" name="name" type="text" required autoFocus defaultValue={client?.name} />
             </div>
 
             {clientType === 'business' && (
               <div className="form-field">
                 <label htmlFor="client-industry">Industry</label>
-                <input id="client-industry" name="industry" type="text" placeholder="e.g. Agriculture" />
+                <input
+                  id="client-industry"
+                  name="industry"
+                  type="text"
+                  placeholder="e.g. Agriculture"
+                  defaultValue={client?.industry}
+                />
               </div>
             )}
 
             <div className="form-field">
               <label htmlFor="client-location">Location</label>
-              <input id="client-location" name="location" type="text" placeholder="City, State" required />
+              <input
+                id="client-location"
+                name="location"
+                type="text"
+                placeholder="City, State"
+                required
+                defaultValue={client?.location}
+              />
             </div>
 
             <div className="form-field">
               <label htmlFor="client-contact">
                 {clientType === 'business' ? 'Primary contact' : 'Email or phone'}
               </label>
-              <input id="client-contact" name="contact" type="text" required />
+              <input
+                id="client-contact"
+                name="contact"
+                type="text"
+                required
+                defaultValue={client && client.primaryContact !== '—' ? client.primaryContact : ''}
+              />
             </div>
 
             <fieldset className="form-field program-options">
               <legend className="form-label">Programs</legend>
               {allPrograms.map((program) => (
                 <label className="checkbox-option" key={program}>
-                  <input type="checkbox" name="programs" value={program} />
+                  <input
+                    type="checkbox"
+                    name="programs"
+                    value={program}
+                    defaultChecked={client?.programs.includes(program)}
+                  />
                   {programLabels[program]}
                 </label>
               ))}
@@ -195,7 +223,7 @@ function AddClientModal({ onClose, onSave }: AddClientModalProps) {
 
             <div className="form-field">
               <label htmlFor="client-status">Status</label>
-              <select id="client-status" name="status" defaultValue="onboarding">
+              <select id="client-status" name="status" defaultValue={client?.status ?? 'onboarding'}>
                 <option value="onboarding">Onboarding</option>
                 <option value="active">Active</option>
                 <option value="waiting">Waiting on client</option>
@@ -208,7 +236,7 @@ function AddClientModal({ onClose, onSave }: AddClientModalProps) {
           <div className="modal-footer">
             <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
             <button type="submit" disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Add client'}
+              {isSaving ? 'Saving...' : isEditing ? 'Save changes' : 'Add client'}
             </button>
           </div>
         </form>
@@ -222,6 +250,7 @@ function Clients() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingClient, setEditingClient] = useState<Client | null>(null) // null = adding
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const [activeProgram, setActiveProgram] = useState<Program | 'all'>('all')
@@ -296,11 +325,23 @@ function Clients() {
       .finally(() => setIsLoading(false))
   }, [])
 
-  // Sends the new client to the API (which calls clients_create in the database),
-  // then reloads the table so the new client shows up
+  function openAddModal() {
+    setEditingClient(null)
+    setIsModalOpen(true)
+  }
+
+  function openEditModal(client: Client) {
+    setEditingClient(client)
+    setIsModalOpen(true)
+  }
+
+  // Saves the form through the API, then reloads the table.
+  // Adding:  POST /api/clients       -> clients_create in the database
+  // Editing: PUT  /api/clients/{id}  -> clients_update in the database
   async function handleSave(newClient: NewClient) {
-    const response = await fetch('/api/clients', {
-      method: 'POST',
+    const url = editingClient ? `/api/clients/${editingClient.id}` : '/api/clients'
+    const response = await fetch(url, {
+      method: editingClient ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newClient),
     })
@@ -321,7 +362,7 @@ function Clients() {
           Businesses and individuals you work with, by program.
         </p>
 
-        <button onClick={() => setIsModalOpen(true)}>+ Add Client</button>
+        <button onClick={openAddModal}>+ Add Client</button>
       </div>
 
       <div className="page-toolbar">
@@ -429,7 +470,9 @@ function Clients() {
                   />
                 </td>
                 <td>
-                  <div className="client-name">{client.name}</div>
+                  <button className="client-name link-button" onClick={() => openEditModal(client)}>
+                    {client.name}
+                  </button>
                   <div className="client-meta">
                     {client.type === 'business'
                       ? `Business, ${client.industry ? client.industry + ', ' : ''}${client.location}`
@@ -460,6 +503,17 @@ function Clients() {
                 <td className="actions-cell">
                   <button
                     className="icon-button"
+                    onClick={() => openEditModal(client)}
+                    aria-label={`Edit ${client.name}`}
+                    title="Edit"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                  </button>
+                  <button
+                    className="icon-button icon-button-danger"
                     onClick={() => deleteClients([client.id])}
                     aria-label={`Delete ${client.name}`}
                     title="Delete"
@@ -485,7 +539,9 @@ function Clients() {
       </div>
 
       {isModalOpen && (
-        <AddClientModal
+        <ClientModal
+          key={editingClient?.id ?? 'new'}
+          client={editingClient}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
         />

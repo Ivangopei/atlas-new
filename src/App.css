@@ -1855,13 +1855,13 @@ a.view-project-button {
 }
 
 .clients-page .data-table th:nth-child(1) { width: 48px; }  /* checkbox */
-.clients-page .data-table th:nth-child(2) { width: 27%; }   /* client */
+.clients-page .data-table th:nth-child(2) { width: 26%; }   /* client */
 .clients-page .data-table th:nth-child(3) { width: 14%; }   /* programs */
 .clients-page .data-table th:nth-child(4) { width: 19%; }   /* contact */
 .clients-page .data-table th:nth-child(5) { width: 15%; }   /* status */
 .clients-page .data-table th:nth-child(6) { width: 10%; }   /* open tasks */
 .clients-page .data-table th:nth-child(7) { width: 11%; }   /* last activity */
-.clients-page .data-table th:nth-child(8) { width: 56px; }  /* delete */
+.clients-page .data-table th:nth-child(8) { width: 110px; } /* edit + delete */
 
 .clients-page .data-table td {
   overflow-wrap: anywhere;
@@ -1884,6 +1884,7 @@ a.view-project-button {
 
 .actions-cell {
   text-align: right;
+  white-space: nowrap;
 }
 
 .icon-button {
@@ -1899,8 +1900,29 @@ a.view-project-button {
 }
 
 .icon-button:hover {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.icon-button-danger:hover {
   background-color: #fee2e2;
   color: #dc2626;
+}
+
+/* Client name in the table: looks like text, opens the edit popup when clicked */
+.link-button {
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: #2563eb;
+  text-decoration: underline;
+  background: none;
 }
 
 .selection-bar {
