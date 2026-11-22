@@ -222,6 +222,7 @@ function Clients() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const [activeProgram, setActiveProgram] = useState<Program | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all')
@@ -244,6 +245,48 @@ function Clients() {
 
     return matchesProgram && matchesStatus && matchesType && matchesSearch
   })
+
+  // Checkbox helpers. "Select all" works on the clients currently shown (after filters).
+  const allVisibleSelected =
+    visibleClients.length > 0 && visibleClients.every((client) => selectedIds.includes(client.id))
+  const someVisibleSelected = visibleClients.some((client) => selectedIds.includes(client.id))
+
+  function toggleOne(clientId: number) {
+    setSelectedIds((current) =>
+      current.includes(clientId)
+        ? current.filter((id) => id !== clientId) // already checked -> uncheck
+        : [...current, clientId], // not checked -> check
+    )
+  }
+
+  function toggleAll() {
+    setSelectedIds(allVisibleSelected ? [] : visibleClients.map((client) => client.id))
+  }
+
+  // Deletes the given clients through the API, then reloads the table
+  async function deleteClients(clientIds: number[]) {
+    const message =
+      clientIds.length === 1
+        ? 'Delete this client? Their contacts, projects, tasks and documents will be deleted too.'
+        : `Delete ${clientIds.length} clients? Their contacts, projects, tasks and documents will be deleted too.`
+    if (!window.confirm(message)) return
+
+    try {
+      await Promise.all(
+        clientIds.map(async (id) => {
+          const response = await fetch(`/api/clients/${id}`, { method: 'DELETE' })
+          if (!response.ok && response.status !== 404) {
+            throw new Error(`Server error (${response.status})`)
+          }
+        }),
+      )
+    } catch {
+      window.alert('Could not delete. Is the API running?')
+    }
+
+    setSelectedIds((current) => current.filter((id) => !clientIds.includes(id)))
+    setClients(await fetchClients())
+  }
 
   // Load the clients once, when the page opens
   useEffect(() => {
@@ -336,22 +379,55 @@ function Clients() {
         </div>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div className="selection-bar">
+          <span>{selectedIds.length} selected</span>
+          <button className="danger-button" onClick={() => deleteClients(selectedIds)}>
+            Delete selected
+          </button>
+          <button className="secondary-button" onClick={() => setSelectedIds([])}>
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="table-card">
         <table className="data-table">
           <thead>
             <tr>
+              <th className="checkbox-cell">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  ref={(box) => {
+                    // the "-" state, like Gmail, when only some are checked
+                    if (box) box.indeterminate = someVisibleSelected && !allVisibleSelected
+                  }}
+                  onChange={toggleAll}
+                  aria-label="Select all clients"
+                />
+              </th>
               <th>Client</th>
               <th>Programs</th>
               <th>Primary contact</th>
               <th>Status</th>
               <th>Open tasks</th>
               <th>Last activity</th>
+              <th aria-label="Actions"></th>
             </tr>
           </thead>
 
           <tbody>
             {visibleClients.map((client) => (
-              <tr key={client.id}>
+              <tr key={client.id} className={selectedIds.includes(client.id) ? 'selected-row' : ''}>
+                <td className="checkbox-cell">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(client.id)}
+                    onChange={() => toggleOne(client.id)}
+                    aria-label={`Select ${client.name}`}
+                  />
+                </td>
                 <td>
                   <div className="client-name">{client.name}</div>
                   <div className="client-meta">
@@ -381,6 +457,21 @@ function Clients() {
 
                 <td>{client.openTasks}</td>
                 <td>{client.lastActivity}</td>
+                <td className="actions-cell">
+                  <button
+                    className="icon-button"
+                    onClick={() => deleteClients([client.id])}
+                    aria-label={`Delete ${client.name}`}
+                    title="Delete"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6M14 11v6" />
+                    </svg>
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

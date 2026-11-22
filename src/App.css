@@ -1854,13 +1854,77 @@ a.view-project-button {
   table-layout: fixed;
 }
 
-.clients-page .data-table th:nth-child(1) { width: 29%; }
-.clients-page .data-table th:nth-child(2) { width: 14%; }
-.clients-page .data-table th:nth-child(3) { width: 20%; }
-.clients-page .data-table th:nth-child(4) { width: 15%; }
-.clients-page .data-table th:nth-child(5) { width: 10%; }
-.clients-page .data-table th:nth-child(6) { width: 12%; }
+.clients-page .data-table th:nth-child(1) { width: 48px; }  /* checkbox */
+.clients-page .data-table th:nth-child(2) { width: 27%; }   /* client */
+.clients-page .data-table th:nth-child(3) { width: 14%; }   /* programs */
+.clients-page .data-table th:nth-child(4) { width: 19%; }   /* contact */
+.clients-page .data-table th:nth-child(5) { width: 15%; }   /* status */
+.clients-page .data-table th:nth-child(6) { width: 10%; }   /* open tasks */
+.clients-page .data-table th:nth-child(7) { width: 11%; }   /* last activity */
+.clients-page .data-table th:nth-child(8) { width: 56px; }  /* delete */
 
 .clients-page .data-table td {
   overflow-wrap: anywhere;
+}
+
+/* Clients: checkboxes, delete icon, and the "N selected" bar */
+.checkbox-cell {
+  padding-right: 0 !important;
+}
+
+.checkbox-cell input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.selected-row {
+  background-color: #eff6ff;
+}
+
+.actions-cell {
+  text-align: right;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background-color: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #1e3a8a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.danger-button {
+  padding: 7px 12px;
+  background-color: #dc2626;
+  border: none;
+  color: #ffffff;
+  font-size: 13px;
+}
+
+.danger-button:hover {
+  background-color: #b91c1c;
 }

@@ -7,7 +7,6 @@
 -- 2. saves their main contact in the contacts table
 -- 3. saves one project per program (H-2A, H-2B, EB-3) in the projects table
 -- If any step fails, nothing is saved. Returns the new client's id.
-
 CREATE OR REPLACE FUNCTION clients_create(
   p_name           TEXT,
   p_type           TEXT,
@@ -42,5 +41,20 @@ BEGIN
   END LOOP;
 
   RETURN v_client_id;
+END;
+$$;
+
+-- Deletes a client.
+-- Their contacts, projects, tasks and documents are deleted too,
+-- because those tables use ON DELETE CASCADE.
+-- Returns true if a client was deleted, false if that id didn't exist.
+DROP FUNCTION IF EXISTS clients_delete(INTEGER);  -- in case an older version exists
+CREATE OR REPLACE FUNCTION clients_delete(p_client_id INTEGER)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  DELETE FROM clients WHERE id = p_client_id;
+  RETURN FOUND;
 END;
 $$;

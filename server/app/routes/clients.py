@@ -1,6 +1,6 @@
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.db import get_connection
@@ -71,3 +71,13 @@ def create_client(client: ClientCreate):
         ).fetchone()["id"]
 
     return {"id": new_id}
+
+@router.delete("/{client_id}", status_code=204)
+def delete_client(client_id: int):
+    with get_connection() as conn:
+        deleted = conn.execute(
+            "SELECT clients_delete(%s) AS deleted", (client_id,)
+        ).fetchone()["deleted"]
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Client not found")
