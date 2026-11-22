@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 
 type ClientType = 'business' | 'individual'
@@ -18,16 +18,60 @@ type Client = {
   lastActivity: string
 }
 
-const initialClients: Client[] = [
-  { id: 1, name: 'ABC Manufacturing', type: 'business', industry: 'Manufacturing', location: 'Wilmington, DE', primaryContact: 'John Smith', status: 'active', programs: ['h2b', 'eb3'], openTasks: 8, lastActivity: 'Today' },
-  { id: 2, name: 'XYZ Logistics', type: 'business', industry: 'Logistics', location: 'Dover, DE', primaryContact: 'Sarah Miller', status: 'waiting', programs: ['h2b'], openTasks: 3, lastActivity: '2 days ago' },
-  { id: 3, name: 'Global Foods', type: 'business', industry: 'Food processing', location: 'Newark, DE', primaryContact: 'Mike Johnson', status: 'active', programs: ['h2a', 'h2b'], openTasks: 6, lastActivity: 'Yesterday' },
-  { id: 4, name: 'Midwest Industries', type: 'business', industry: 'Industrial supply', location: 'Middletown, DE', primaryContact: 'Emily Davis', status: 'active', programs: ['eb3'], openTasks: 7, lastActivity: '3 days ago' },
-  { id: 5, name: 'Acme Construction', type: 'business', industry: 'Construction', location: 'Georgetown, DE', primaryContact: 'David Lee', status: 'onboarding', programs: ['h2b'], openTasks: 2, lastActivity: '1 week ago' },
-  { id: 6, name: 'Green Valley Farms', type: 'business', industry: 'Agriculture', location: 'Smyrna, DE', primaryContact: 'Tom Baker', status: 'active', programs: ['h2a'], openTasks: 4, lastActivity: '2 days ago' },
-  { id: 7, name: 'Maria Lopez', type: 'individual', location: 'Dover, DE', primaryContact: 'maria.lopez@email.com', status: 'waiting', programs: ['eb3'], openTasks: 2, lastActivity: 'Yesterday' },
-  { id: 8, name: 'Andrei Popescu', type: 'individual', location: 'Newark, DE', primaryContact: '(302) 555-0148', status: 'onboarding', programs: ['eb3'], openTasks: 1, lastActivity: '4 days ago' },
-]
+// Shape of one client as the API returns it (snake_case, straight from PostgreSQL)
+type ApiClient = {
+  id: number
+  name: string
+  type: ClientType
+  industry: string | null
+  location: string | null
+  status: ClientStatus
+  primary_contact: string | null
+  primary_email: string | null
+  primary_phone: string | null
+  programs: string | null // e.g. "h2a, h2b"
+  open_tasks: number
+}
+
+// What the Add Client form sends to POST /api/clients
+type NewClient = {
+  name: string
+  type: ClientType
+  industry: string | null
+  location: string
+  status: ClientStatus
+  primary_contact: string
+  programs: Program[]
+}
+
+// Converts an API row into the Client shape the table uses
+function toClient(row: ApiClient): Client {
+  const contact =
+    row.type === 'business'
+      ? row.primary_contact
+      : row.primary_email ?? row.primary_phone
+
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    industry: row.industry ?? undefined,
+    location: row.location ?? '',
+    primaryContact: contact ?? '—',
+    status: row.status,
+    programs: row.programs ? (row.programs.split(', ') as Program[]) : [],
+    openTasks: Number(row.open_tasks),
+    lastActivity: '—', // not tracked yet
+  }
+}
+
+// Gets every client from the API
+async function fetchClients(): Promise<Client[]> {
+  const response = await fetch('/api/clients')
+  if (!response.ok) throw new Error(`Server error (${response.status})`)
+  const rows = (await response.json()) as ApiClient[]
+  return rows.map(toClient)
+}
 
 const allPrograms: Program[] = ['h2a', 'h2b', 'eb3']
 
@@ -45,32 +89,37 @@ const statusLabels: Record<ClientStatus, string> = {
 
 type AddClientModalProps = {
   onClose: () => void
-  onSave: (client: Client) => void
-  nextId: number
+  onSave: (client: NewClient) => Promise<void>
 }
 
-function AddClientModal({ onClose, onSave, nextId }: AddClientModalProps) {
+function AddClientModal({ onClose, onSave }: AddClientModalProps) {
   const [clientType, setClientType] = useState<ClientType>('business')
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const form = new FormData(event.currentTarget)
 
-    const newClient: Client = {
-      id: nextId,
+    const newClient: NewClient = {
       name: String(form.get('name')).trim(),
       type: clientType,
-      industry: clientType === 'business' ? String(form.get('industry')).trim() : undefined,
+      industry: clientType === 'business' ? String(form.get('industry') ?? '').trim() || null : null,
       location: String(form.get('location')).trim(),
-      primaryContact: String(form.get('contact')).trim(),
       status: form.get('status') as ClientStatus,
+      primary_contact: String(form.get('contact')).trim(),
       programs: form.getAll('programs') as Program[],
-      openTasks: 0,
-      lastActivity: 'Just now',
     }
 
-    onSave(newClient)
+    setIsSaving(true)
+    setError(null)
+    try {
+      await onSave(newClient)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the client')
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -154,9 +203,13 @@ function AddClientModal({ onClose, onSave, nextId }: AddClientModalProps) {
             </div>
           </div>
 
+          {error && <p className="form-error" role="alert">{error}</p>}
+
           <div className="modal-footer">
             <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
-            <button type="submit">Add client</button>
+            <button type="submit" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Add client'}
+            </button>
           </div>
         </form>
       </div>
@@ -165,7 +218,9 @@ function AddClientModal({ onClose, onSave, nextId }: AddClientModalProps) {
 }
 
 function Clients() {
-  const [clients, setClients] = useState<Client[]>(initialClients)
+  const [clients, setClients] = useState<Client[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const [activeProgram, setActiveProgram] = useState<Program | 'all'>('all')
@@ -190,8 +245,28 @@ function Clients() {
     return matchesProgram && matchesStatus && matchesType && matchesSearch
   })
 
-  function handleSave(newClient: Client) {
-    setClients([...clients, newClient])
+  // Load the clients once, when the page opens
+  useEffect(() => {
+    fetchClients()
+      .then(setClients)
+      .catch(() => setLoadError('Could not load clients. Is the API running?'))
+      .finally(() => setIsLoading(false))
+  }, [])
+
+  // Sends the new client to the API (which calls clients_create in the database),
+  // then reloads the table so the new client shows up
+  async function handleSave(newClient: NewClient) {
+    const response = await fetch('/api/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newClient),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Could not save the client (${response.status})`)
+    }
+
+    setClients(await fetchClients())
     setIsModalOpen(false)
   }
 
@@ -311,14 +386,15 @@ function Clients() {
           </tbody>
         </table>
 
-        {visibleClients.length === 0 && (
+        {isLoading && <p className="empty-state">Loading clients...</p>}
+        {loadError && <p className="empty-state">{loadError}</p>}
+        {!isLoading && !loadError && visibleClients.length === 0 && (
           <p className="empty-state">No clients match these filters.</p>
         )}
       </div>
 
       {isModalOpen && (
         <AddClientModal
-          nextId={Math.max(...clients.map((client) => client.id)) + 1}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
         />
