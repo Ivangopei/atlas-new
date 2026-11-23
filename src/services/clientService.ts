@@ -1,8 +1,5 @@
-// Client service: business logic for clients (ATL-2, ATL-3) and the login form.
-//
-// Pure functions only: validation, mapping API rows to what the UI shows, filtering.
-// The server checks the same rules again (server/app/schemas.py); checking here
-// first gives the user instant feedback without a round trip.
+// client stuff for ATL-2 / ATL-3: validation, mapping api rows, filters
+// server checks the same rules again in schemas.py, this is just for quick feedback
 
 import { apiRequest } from '../api/apiClient'
 
@@ -151,7 +148,7 @@ export function countByProgram(clients: Client[], program: Program): number {
   return clients.filter((client) => client.programs.includes(program)).length
 }
 
-// --- API calls -------------------------------------------------------------
+// API calls
 
 export async function fetchClients(): Promise<Client[]> {
   const rows = await apiRequest<ClientRow[]>('/api/clients')

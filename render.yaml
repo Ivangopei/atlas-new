@@ -1,5 +1,4 @@
-# Render Blueprint: creates the Atlas API and its PostgreSQL database.
-# In Render: New + -> Blueprint -> pick this repo. Render reads this file.
+# render blueprint for the api + postgres db (New -> Blueprint -> pick this repo)
 databases:
   - name: atlas-db
     plan: free

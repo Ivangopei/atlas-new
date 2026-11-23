@@ -44,7 +44,7 @@ def client(monkeypatch):
     return TestClient(main.app)
 
 
-# --- password hashing -------------------------------------------------------
+# password hashing
 
 def test_password_is_hashed_not_stored_as_plain_text():
     hashed = hash_password(PASSWORD)
@@ -60,7 +60,7 @@ def test_malformed_hash_fails_instead_of_crashing():
     assert verify_password(PASSWORD, "not-a-bcrypt-hash") is False
 
 
-# --- login endpoint ----------------------------------------------------------
+# login endpoint
 
 def test_login_with_correct_credentials_returns_token_and_user(client):
     response = client.post("/api/auth/login", json={"email": "demo@atlas.test", "password": PASSWORD})
@@ -94,7 +94,7 @@ def test_login_with_missing_fields_returns_422(client):
     assert client.post("/api/auth/login", json={"email": "demo@atlas.test"}).status_code == 422
 
 
-# --- protected routes ----------------------------------------------------------
+# protected routes
 
 @pytest.mark.parametrize("path", [
     "/api/clients", "/api/tasks", "/api/projects", "/api/contacts",

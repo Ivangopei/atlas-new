@@ -1,16 +1,7 @@
-// API client: the one place the frontend talks to the backend.
-//
-// Every request goes through apiRequest(), which
-//   - adds the saved login token as "Authorization: Bearer <token>"
-//   - turns error responses into an ApiError with a readable message
-//   - tells the app to sign out when the server says 401 (expired or bad token)
-//
-// Pages never call fetch() directly. That keeps the UI layer free of HTTP details
-// and gives one place to change if the API address or auth scheme changes.
+// all api calls go through here (facade). adds the token, turns errors into
+// a readable message, and signs you out on a 401. pages shouldn't call fetch directly
 
-// In development Vite forwards /api to localhost:8000 (vite.config.ts).
-// In production Vercel forwards /api to the Render backend (vercel.json).
-// VITE_API_URL can point somewhere else if needed.
+// locally vite proxies /api to :8000, on vercel it gets forwarded to render
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
 const TOKEN_KEY = 'atlas.token'

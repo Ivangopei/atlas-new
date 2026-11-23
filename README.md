@@ -1,246 +1,209 @@
-# Atlas: Business Workflow Portal
+# Atlas
 
-Atlas is a private workspace for case managers who handle employment-based visa cases (H-2A, H-2B and EB-3) for businesses and individuals. It keeps clients, their visa programs, contacts, projects, tasks, follow-ups and documents in one place, so nothing about a case lives in scattered spreadsheets and email threads.
+Atlas is a portal for managing visa cases (H-2A, H-2B, EB-3) for businesses and individuals. Clients, programs, contacts, projects, tasks, follow-ups and documents all in one place instead of spreadsheets and emails.
 
-This repository is the **Sprint 1 MVP**: secure sign-in, plus a client list backed by a real PostgreSQL database where each client can be in several visa programs.
+This is the Sprint 1 MVP: login + a clients list that's saved in Postgres, and each client can be in more than one program.
 
-| | |
-|---|---|
-| **Live app** | https://atlas-pearl-five-58.vercel.app |
-| **API** | https://atlas-api-4303.onrender.com/api/health |
-| **Demo login** | `demo@atlas.test` / `AtlasDemo2026!` |
-| **Jira board** | https://ivangopei.atlassian.net/jira/software/projects/ATL/boards/4 |
+- Live app: https://atlas-pearl-five-58.vercel.app
+- API: https://atlas-api-4303.onrender.com/api/health
+- Demo login: `demo@atlas.test` / `AtlasDemo2026!`
+- Jira: https://ivangopei.atlassian.net/jira/software/projects/ATL/boards/4
 
-> The API runs on Render's free plan, which sleeps after 15 minutes without traffic. The **first** sign-in after a quiet period can take up to about a minute while the server wakes up. After that it is fast.
+Heads up: the API is on Render's free plan so it sleeps after ~15 min. First login after that can take up to a minute, then it's fine.
 
----
+## Sprint 1
 
-## Sprint 1 scope
+- **ATL-1 Sign in** - email + password, wrong ones show an error. Every page and API route needs you to be logged in (API gives 401 otherwise).
+- **ATL-2 Add/manage clients** - add client form saves to the db and shows up in the list right away. Name and type are required, industry is only for businesses.
+- **ATL-3 Programs** - a client can be in H-2A, H-2B and EB-3 at the same time. Shows as tags and you can filter by them.
 
-| Story | What it means | Status |
-|---|---|---|
-| **ATL-1 Sign in** | Correct email + password opens the dashboard; wrong ones show an error. Every page and API route requires a login (API returns **401** without one). | Done |
-| **ATL-2 Add and manage clients** | The Add Client form saves to the database and the new client appears in the list right away. Name and type are required; industry only applies to businesses. | Done |
-| **ATL-3 Put a client in programs** | A client can be in H-2A, H-2B and EB-3 at the same time. The list shows each client's programs as tags and can be filtered by program. | Done |
-
-Other pages (Dashboard, Projects, Contacts, Follow-ups, Documents, Activity, News) are still interface prototypes using sample data in the browser. They are planned for Sprints 2 and 3 (see [Roadmap](#known-limitations-and-roadmap)). The Tasks page also got a validation and filtering pass in this sprint.
+The other pages (dashboard, projects, contacts, follow-ups, documents, activity, news) still use fake data in the browser for now. Those are for sprint 2 and 3.
 
 ## Screenshots
 
-| Sign-in with wrong password (ATL-1) | Client list loaded from PostgreSQL (ATL-2, ATL-3) |
-|---|---|
-| ![Login error](docs/screenshots/01-login-error.png) | ![Clients](docs/screenshots/03-clients-from-database.png) |
+Wrong password:
 
-| Validation on the Add Client form | New client saved in three programs |
-|---|---|
-| ![Validation](docs/screenshots/04-add-client-validation.png) | ![Saved](docs/screenshots/06-client-saved-with-programs.png) |
+![Login error](docs/screenshots/01-login-error.png)
 
-More in [`docs/screenshots`](docs/screenshots).
+Clients from the database:
 
----
+![Clients](docs/screenshots/03-clients-from-database.png)
 
-## Tech stack
+Add client validation:
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, Vite, React Router |
-| Backend | Python 3.13, FastAPI, Pydantic |
-| Database | PostgreSQL (psycopg 3) |
-| Auth | bcrypt password hashes, JWT bearer tokens (PyJWT) |
-| Tests | Vitest (frontend), pytest (backend), GitHub Actions CI |
-| Hosting | Vercel (frontend), Render (API + PostgreSQL) |
+![Validation](docs/screenshots/04-add-client-validation.png)
 
-## Architecture
+Client saved in 3 programs:
+
+![Saved](docs/screenshots/06-client-saved-with-programs.png)
+
+More in `docs/screenshots`.
+
+## Stack
+
+- Frontend: React, TypeScript, Vite, React Router
+- Backend: Python, FastAPI, Pydantic
+- DB: PostgreSQL (psycopg 3)
+- Auth: bcrypt + JWT
+- Tests: Vitest, pytest, GitHub Actions
+- Hosting: Vercel (frontend), Render (API + db)
+
+## How it's set up
 
 ```
-Browser (React app on Vercel)
-   |  /api/*  (Vercel forwards these to Render, so the browser sees one origin)
+React app (Vercel)
+   |  /api/*  gets forwarded to Render
    v
-FastAPI on Render  ── routes ──> schemas (validation) ──> repositories (SQL) ──> PostgreSQL on Render
-                        ^
-                        └── get_current_user: checks the JWT on every protected route
+FastAPI (Render) -> routes -> schemas (validation) -> repositories (SQL) -> Postgres
 ```
 
-### Separation of concerns
+Frontend (`src/`):
+- `pages/` - the UI, forms, showing errors
+- `services/` - logic like validation and filtering (`clientService.ts`, `taskService.ts`)
+- `api/` - `apiClient.ts`, the only place that calls fetch
+- `auth/` - `AuthContext.tsx`, who's logged in
+- `data/` - fake data for pages that aren't on the API yet
 
-**Frontend (`src/`)**
-
-| Folder | Layer | Responsibility |
-|---|---|---|
-| `pages/` | UI | React components: render data, collect form input, show errors |
-| `services/` | Business logic | Pure functions: validation, mapping API data, filtering (`clientService.ts`, `taskService.ts`) |
-| `api/` | Data access | `apiClient.ts`: the only code that calls `fetch`; adds the token and turns errors into messages |
-| `auth/` | App state | `AuthContext.tsx`: who is signed in |
-| `data/` | Sample data | In-browser data for pages not yet on the API |
-
-**Backend (`server/app/`)**
-
-| File | Layer | Responsibility |
-|---|---|---|
-| `routes/*.py` | HTTP | URLs, status codes, JSON in and out |
-| `schemas.py` | Validation | Pydantic models with the rules for incoming data (e.g. `ClientCreate`) |
-| `security.py` | Auth | Password hashing, token creation and checking, the `get_current_user` guard |
-| `repositories.py` | Data access | All SQL for users and clients |
-| `db.py` | Infrastructure | Opens connections from `DATABASE_URL` |
-| `init_db.py` | Setup | Creates tables and seed data on an empty database |
-| `db/schema.sql`, `db/seed.sql` | Database | Tables, constraints, and dummy data |
+Backend (`server/app/`):
+- `routes/` - endpoints
+- `schemas.py` - validation rules (pydantic)
+- `security.py` - password hashing, tokens, `get_current_user`
+- `repositories.py` - all the SQL for users and clients
+- `db.py` - db connection
+- `init_db.py` - creates tables + demo data on an empty db
+- `db/schema.sql`, `db/seed.sql` - tables and dummy data
 
 ### Design patterns
 
-- **Layered architecture.** Each layer only talks to the layer below it: pages call services, services call the API client. On the server, routes call repositories. This is why the business rules can be unit tested without a browser or a database.
-- **Repository pattern** (`server/app/repositories.py`). SQL is hidden behind functions like `create_client(conn, client)`. Routes don't know how the data is stored, and tests replace the repository with a fake.
-- **Dependency injection** (FastAPI `Depends`). The sign-in guard `get_current_user` is attached to every protected router in one line in `main.py`. Tests swap it out with `app.dependency_overrides`.
-- **Observer pattern** (React Context in `src/auth/AuthContext.tsx`). Components subscribe with `useAuth()` and re-render automatically when the user signs in, signs out, or their token expires.
-- **Facade** (`src/api/apiClient.ts`). One small interface hides `fetch`, headers, tokens and error parsing from the rest of the app.
+- **Layers** - pages call services, services call the api client. On the server routes call repositories. Makes it easy to test the logic without a browser or db.
+- **Repository** (`repositories.py`) - SQL is behind functions like `create_client(conn, client)`, so tests can swap in a fake.
+- **Dependency injection** (FastAPI `Depends`) - the login check is added to every protected router in `main.py`, and tests override it.
+- **Observer** (`AuthContext.tsx`) - components use `useAuth()` and rerender when you log in/out.
+- **Facade** (`apiClient.ts`) - hides fetch, headers, tokens and error parsing from the rest of the app.
 
-### Technical decisions
+### Why I did it this way
 
-- **FastAPI + PostgreSQL** instead of a Node backend: Pydantic gives strong validation with little code, and PostgreSQL `CHECK` constraints enforce the same rules a second time at the database level.
-- **JWT bearer tokens** instead of server sessions: the API stays stateless, which suits Render's free plan, where the server can restart at any time. Tokens expire after 8 hours.
-- **bcrypt** for passwords: only hashes are stored. Login returns the same message for an unknown email and a wrong password, so the form can't be used to discover accounts.
-- **A `client_programs` join table** for ATL-3, so a client can be in any combination of programs, with a primary key that prevents duplicates.
-- **Vercel rewrites `/api/*` to Render**, so the browser only ever talks to one origin. This avoids CORS configuration and keeps the frontend code environment-independent.
-- **Validation runs on both sides.** The frontend gives instant feedback; the server is the source of truth and rejects bad data with a 422, even if someone bypasses the UI.
-- **Database errors become a 503 with a safe message** instead of a 500 with a stack trace, and the real error is logged on the server.
+- FastAPI + Postgres: pydantic makes validation easy and the db `CHECK` constraints back it up.
+- JWT instead of sessions so the API doesn't need to keep state (Render free plan restarts a lot). Tokens last 8 hours.
+- Passwords are bcrypt hashed. Login says the same thing for wrong email and wrong password so you can't guess accounts.
+- `client_programs` join table so a client can be in any mix of programs (ATL-3).
+- Vercel forwards `/api/*` to Render so there's no CORS stuff to deal with.
+- Validation happens on both sides. Frontend for quick feedback, server rejects bad data with 422 anyway.
+- If the db is down you get a 503 with a short message, not a 500 with a stack trace.
 
 ## API
 
-All routes except `/api/health*` and `/api/auth/login` require `Authorization: Bearer <token>`.
+Everything except `/api/health*` and `/api/auth/login` needs `Authorization: Bearer <token>`.
 
-| Method | Route | Description |
-|---|---|---|
-| `GET` | `/api/health` | API is up |
-| `GET` | `/api/health/db` | Database is reachable (503 if not) |
-| `POST` | `/api/auth/login` | `{email, password}` → `{access_token, user}`; 401 on bad credentials |
-| `GET` | `/api/auth/me` | The signed-in user |
-| `GET` | `/api/clients` | All clients with programs, primary contact and open task count |
-| `GET` | `/api/clients/{id}` | One client (404 if missing) |
-| `POST` | `/api/clients` | Create a client with programs (201; 422 on invalid input) |
-| `GET` | `/api/tasks`, `/api/projects`, `/api/contacts`, `/api/followups`, `/api/documents` | Read-only lists (pages get wired to these in Sprint 2) |
+- `GET /api/health` - API is up
+- `GET /api/health/db` - db is reachable (503 if not)
+- `POST /api/auth/login` - `{email, password}` returns a token + user, 401 if wrong
+- `GET /api/auth/me` - current user
+- `GET /api/clients` - all clients with programs, contact and open task count
+- `GET /api/clients/{id}` - one client (404 if not found)
+- `POST /api/clients` - create a client (201, or 422 if invalid)
+- `GET /api/tasks`, `/api/projects`, `/api/contacts`, `/api/followups`, `/api/documents` - read only for now
 
-Interactive API docs are generated automatically at `/docs` when the API runs locally.
+FastAPI docs are at `/docs` when running locally.
 
----
+## Running locally
 
-## Running it locally
-
-### Prerequisites
-
-- Node.js 20+ and npm
-- Python 3.12+
-- PostgreSQL 15+ running locally
-
-### 1. Clone
+You need Node 20+, Python 3.12+ and Postgres 15+.
 
 ```bash
 git clone https://github.com/Ivangopei/atlas-new.git
 cd atlas-new
 ```
 
-### 2. Database and API
+Backend:
 
 ```bash
-# Create an empty database (any name works)
-createdb atlas            # or: psql -U postgres -c "CREATE DATABASE atlas;"
-
+createdb atlas
 cd server
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate      # windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
-
-cp .env.example .env               # then edit .env:
-#   DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/atlas
-#   JWT_SECRET=<output of: python -c "import secrets; print(secrets.token_urlsafe(48))">
-
-uvicorn app.main:app --reload      # http://localhost:8000
+cp .env.example .env
+# put your DATABASE_URL and a JWT_SECRET in .env
+# secret: python -c "import secrets; print(secrets.token_urlsafe(48))"
+uvicorn app.main:app --reload  # localhost:8000
 ```
 
-On first start, the API sees the empty database and creates the tables and demo data automatically. To wipe and rebuild it later: `python -m app.init_db --reset`.
+It creates the tables and demo data by itself the first time. To reset: `python -m app.init_db --reset`.
 
-### 3. Frontend
-
-In a second terminal, from the repo root:
+Frontend (another terminal, repo root):
 
 ```bash
 npm install
-npm run dev                        # http://localhost:5173
+npm run dev   # localhost:5173
 ```
 
-Vite forwards `/api` requests to `localhost:8000` (see `vite.config.ts`). Sign in with `demo@atlas.test` / `AtlasDemo2026!`.
+Log in with `demo@atlas.test` / `AtlasDemo2026!`.
 
-## Using the app
+## Using it
 
-1. **Sign in** with the demo account. A wrong password shows "Incorrect email or password."
-2. Open **Clients**. The list comes from the database. Each client's visa programs show as colored tags.
-3. Use the **H-2A / H-2B / EB-3** tabs, the status and type filters, or the search box to narrow the list.
-4. Click **+ Add Client**. Choose Business or Individual; the Industry field only appears for businesses. Tick one or more programs and save. The client appears in the list immediately and is stored in PostgreSQL, so it is still there after a refresh.
-5. Try saving without a name to see validation errors.
-6. **Sign out** from the bottom of the sidebar. Any page now shows the login screen again.
+1. Log in with the demo account (try a wrong password too)
+2. Go to Clients, the list comes from the db
+3. Filter with the H-2A / H-2B / EB-3 tabs, status, type or search
+4. Click + Add Client, pick business or individual, check some programs and save. It shows up right away and is still there after refresh
+5. Try saving with no name to see the errors
+6. Sign out at the bottom of the sidebar
 
-## Testing
+## Tests
 
 ```bash
-# Frontend (from the repo root): 52 tests
-npm test
-
-# Backend (from server/, with the virtualenv active): 39 tests
-python -m pytest
+npm test                 # frontend, 52 tests
+cd server && python -m pytest   # backend, 39 tests
 ```
 
-GitHub Actions (`.github/workflows/tests.yml`) runs lint, both test suites and the production build on every pull request and every push to `main`.
+GitHub Actions runs lint, both test suites and the build on every PR and push to main.
 
-**Approach.** Business rules are written as pure functions or Pydantic models, so they can be tested directly without a browser or database. API tests use FastAPI's `TestClient` and replace the database connection or repository with a fake, so they run in about two seconds with no PostgreSQL. Every feature is tested for both the success path and its common failures.
+The logic is in plain functions / pydantic models so it can be tested directly. API tests use FastAPI's `TestClient` with a fake db, so no Postgres needed. I tried to test both the normal case and the common failures for each feature.
 
-| Test file | What it covers |
-|---|---|
-| `server/tests/test_auth.py` | Password hashing; login success, wrong password, unknown email, case-insensitive email; 401 on every protected route; forged and expired tokens |
-| `server/tests/test_clients.py` | Client validation rules (required name and type, industry only for businesses, multiple and duplicate programs, unknown programs); `POST /api/clients` 201 / 422 / 401 |
-| `server/tests/test_api.py` | Health checks; list routes; database down → 503 without leaking the error; missing `DATABASE_URL` |
-| `src/services/clientService.test.ts` | Login and client form validation, API ↔ UI mapping, program/status/type/search filtering |
-| `src/api/apiClient.test.ts` | Token header, error message parsing, sign-out on 401 (but not on a wrong password), network failure |
-| `src/services/taskService.test.ts` | Task validation, date parsing (including impossible dates), overdue rules, filtering |
+- `test_auth.py` - hashing, login (good/bad password, unknown email, email case), 401s, fake and expired tokens
+- `test_clients.py` - client validation and `POST /api/clients`
+- `test_api.py` - health checks, list routes, db down -> 503
+- `clientService.test.ts` - form validation, mapping, filters
+- `apiClient.test.ts` - token header, error messages, sign out on 401
+- `taskService.test.ts` - task validation, dates, overdue, filters
 
-Manual end-to-end testing was also done against a real PostgreSQL database and on the deployed site: sign in (good and bad password), add clients of both types with zero to three programs, refresh to confirm they persisted, filters, and sign out.
+Also tested by hand locally and on the live site (login, adding clients, refresh, filters, sign out).
 
 ## Deployment
 
-| Part | Platform | How |
-|---|---|---|
-| Frontend | **Vercel** | Connected to this repo; every push to `main` builds with `npm run build` and deploys `dist/`. `vercel.json` forwards `/api/*` to Render and sends all other paths to `index.html`, so links like `/clients` work on refresh. |
-| API + database | **Render** | A free PostgreSQL database and a free FastAPI web service (root `server/`, `pip install -r requirements.txt`, `uvicorn app.main:app --host 0.0.0.0 --port $PORT`) with `DATABASE_URL` and `JWT_SECRET` set as environment variables, never committed. Tables and demo data are created on the first start. `render.yaml` describes the same setup as a Render Blueprint, so it can be recreated in one step. |
+- **Vercel** - connected to this repo, deploys on every push to main. `vercel.json` forwards `/api/*` to Render and sends everything else to `index.html` so refreshing `/clients` works.
+- **Render** - free Postgres + FastAPI service from `server/`. `DATABASE_URL` and `JWT_SECRET` are env vars (not committed). `render.yaml` has the same setup as a blueprint.
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---|---|
-| `DATABASE_URL is not set` or `/api/health/db` returns 503 "Database is not configured" | Create `server/.env` from `.env.example` and run `uvicorn` from inside `server/`. |
-| 503 "Database is unavailable" | PostgreSQL isn't running, or the password/port in `DATABASE_URL` is wrong. Test with `psql "<your DATABASE_URL>"`. |
-| `JWT_SECRET is not set` when signing in | Add `JWT_SECRET` to `server/.env` and restart the API. |
-| Login always says "Incorrect email or password" locally | The database was created before the `users` table existed. Run `python -m app.init_db --reset` (this deletes local data). |
-| Frontend shows "Could not reach the server" | The API isn't running on port 8000. Start it with `uvicorn app.main:app --reload`. |
-| First sign-in on the live site is slow | The free Render server is waking up; wait up to a minute and try again. |
-| `ModuleNotFoundError: app` when running pytest | Run `python -m pytest` from inside `server/`. |
-| Port 5173 or 8000 already in use | `npm run dev -- --port 5174`, or `uvicorn app.main:app --port 8001` (then update `vite.config.ts`). |
+- `DATABASE_URL is not set` / 503 "Database is not configured" - make `server/.env` from `.env.example` and run uvicorn from `server/`
+- 503 "Database is unavailable" - postgres isn't running or the url/password is wrong
+- `JWT_SECRET is not set` - add it to `.env` and restart
+- Login always fails locally - db was made before the users table existed, run `python -m app.init_db --reset` (wipes local data)
+- "Could not reach the server" - API isn't running on 8000
+- Live site slow on first login - Render is waking up, give it a minute
+- `ModuleNotFoundError: app` in pytest - run it from `server/`
+- Port in use - `npm run dev -- --port 5174` or `uvicorn app.main:app --port 8001` (then change `vite.config.ts`)
 
-## Known limitations and roadmap
+## Limitations / what's next
 
-**Current limitations**
-- One demo account; there is no sign-up or password reset yet. New users are added in the database.
-- Clients can be added but not yet edited or deleted.
-- Dashboard, Projects, Contacts, Tasks, Follow-ups, Documents and Activity still use in-browser sample data; changes there are lost on refresh.
-- Document "upload" only records the file name; files aren't stored.
-- The free Render plan sleeps when idle (slow first request), and its free database expires after 30 days unless upgraded.
-- The login token is kept in `localStorage`. An httpOnly cookie would be safer against XSS.
+Right now:
+- only one demo account, no sign up or password reset
+- can't edit or delete clients yet
+- most pages besides clients still use fake data that resets on refresh
+- document upload only saves the file name
+- Render free plan sleeps and the free db expires after 30 days
+- token is in localStorage (httpOnly cookie would be safer)
 
-**Planned**
-- **Sprint 2 (feature development):** client detail page (ATL-4), tasks (ATL-5) and contacts (ATL-6) on the database; edit and delete clients.
-- **Sprint 3 (testing and deploy):** follow-ups (ATL-7), real document storage (ATL-8), component and end-to-end tests, a durable database plan, error monitoring.
-- **Backlog:** dashboard of what needs attention (ATL-9), global search and activity history (ATL-10), English/Russian language switch.
+Next:
+- Sprint 2: client detail page (ATL-4), tasks (ATL-5) and contacts (ATL-6) on the db, edit/delete clients
+- Sprint 3: follow-ups (ATL-7), real document storage (ATL-8), more tests, better db plan, monitoring
+- Later: dashboard (ATL-9), search + activity history (ATL-10), English/Russian switch
 
 ## Git workflow
 
-Work is done on feature branches and merged into `main` through pull requests with a description of the change. `main` is always deployable: Vercel deploys every push to `main`, and Render deploys the API from `main`.
+Feature branches -> PR -> main. Vercel and Render both deploy from main.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT
