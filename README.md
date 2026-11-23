@@ -133,8 +133,8 @@ Interactive API docs are generated automatically at `/docs` when the API runs lo
 ### 1. Clone
 
 ```bash
-git clone https://github.com/Ivangopei/Business-Workflow-Portal.git
-cd Business-Workflow-Portal
+git clone https://github.com/Ivangopei/atlas-new.git
+cd atlas-new
 ```
 
 ### 2. Database and API
