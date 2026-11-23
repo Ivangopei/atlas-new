@@ -16,7 +16,13 @@ type FollowUp = {
 }
 
 const initialFollowUps: FollowUp[] = [
-  /* your 7 follow-ups, unchanged */
+  { id: 1, subject: 'Check on signed job descriptions', contact: 'Sarah Miller', company: 'XYZ Logistics', method: 'email', group: 'overdue', due: 'Sep 25', lastContacted: 'Sep 18' },
+  { id: 2, subject: 'Get shift requirements for new roles', contact: 'Emily Davis', company: 'Midwest Industries', method: 'call', group: 'overdue', due: 'Sep 26', lastContacted: 'Sep 19' },
+  { id: 3, subject: 'Confirm start dates for new hires', contact: 'Mike Johnson', company: 'Global Foods', method: 'call', group: 'today', due: '11:00 AM', lastContacted: 'Sep 24' },
+  { id: 4, subject: 'Weekly hiring check-in', contact: 'John Smith', company: 'ABC Manufacturing', method: 'meeting', group: 'today', due: '3:30 PM', lastContacted: 'Sep 21' },
+  { id: 5, subject: 'Kickoff call to discuss hiring needs', contact: 'David Lee', company: 'Acme Construction', method: 'call', group: 'this-week', due: 'Oct 1', lastContacted: 'Sep 24' },
+  { id: 6, subject: 'Share interview schedule', contact: 'Sarah Miller', company: 'XYZ Logistics', method: 'email', group: 'this-week', due: 'Oct 2', lastContacted: 'Sep 18' },
+  { id: 7, subject: 'Send background check results', contact: 'John Smith', company: 'ABC Manufacturing', method: 'email', group: 'later', due: 'Oct 8', lastContacted: 'Sep 21' },
 ]
 
 const groups: { key: FollowUpGroup; label: string }[] = [

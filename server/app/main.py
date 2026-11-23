@@ -69,9 +69,7 @@ for router in (clients.router, contacts.router, projects.router, tasks.router,
     app.include_router(router, dependencies=require_login)
 
 
-# Error handling: if the database is down or not configured, every route would
-# otherwise crash with a generic 500 and a stack trace. These handlers turn those
-# failures into a 503 "Service Unavailable" with a short, safe JSON message.
+# if the db is down return a 503 with a short message instead of a 500 + stack trace
 @app.exception_handler(psycopg.OperationalError)
 def database_unavailable(request: Request, exc: psycopg.OperationalError):
     logger.error("Database error on %s: %s", request.url.path, exc)

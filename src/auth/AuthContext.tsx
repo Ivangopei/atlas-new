@@ -1,6 +1,5 @@
-// Auth state for the whole app (Observer pattern via React Context):
-// AuthProvider holds who is signed in, and any component that calls useAuth()
-// re-renders automatically when that changes (sign in, sign out, token expired).
+// keeps track of who's logged in. components use useAuth() and rerender when it changes
+// (observer pattern w/ react context)
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'

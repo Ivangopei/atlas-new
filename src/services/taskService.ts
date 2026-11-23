@@ -1,14 +1,5 @@
-// Task service: the business-logic layer for tasks.
-//
-// Architecture note:
-// Atlas keeps three layers apart on the frontend:
-//   - Data layer:      src/data/*      (types + seed data; later replaced by API calls)
-//   - Business logic:  src/services/*  (pure functions: validation, rules, filtering)
-//   - UI layer:        src/pages/*     (React components that render and collect input)
-//
-// Everything in this file is a plain function with no React and no DOM.
-// That makes the rules easy to unit test (see src/services/taskService.test.ts)
-// and lets the same rules be reused when the data starts coming from the API.
+// task logic (validation, overdue, filtering). no react in here so it's easy to test
+// data is in src/data, pages in src/pages, rules like this go in src/services
 
 import type { Task, TaskPriority, TaskStatus } from '../data/tasks'
 

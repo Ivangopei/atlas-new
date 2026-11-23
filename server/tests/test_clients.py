@@ -14,7 +14,7 @@ from app.schemas import ClientCreate
 from app.security import get_current_user
 
 
-# --- validation rules (schemas.ClientCreate) ----------------------------------
+# validation rules (schemas.ClientCreate)
 
 def test_valid_business_client():
     client = ClientCreate(name="ABC Manufacturing", type="business", industry="Manufacturing",
@@ -62,7 +62,7 @@ def test_blank_optional_fields_become_none():
     assert client.primary_contact is None
 
 
-# --- POST /api/clients --------------------------------------------------------
+# POST /api/clients
 
 class FakeConnection:
     def __enter__(self):

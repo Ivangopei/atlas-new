@@ -10,8 +10,7 @@ import {
 } from '../services/clientService'
 import type { Client, ClientFilters, ClientStatus, ClientType, Program } from '../services/clientService'
 
-// UI layer for ATL-2 / ATL-3. Clients are loaded from and saved to the API;
-// validation and filtering live in services/clientService.ts.
+// clients page (ATL-2, ATL-3). validation + filters are in services/clientService.ts
 
 const programLabels: Record<Program, string> = {
   h2a: 'H-2A',

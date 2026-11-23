@@ -35,8 +35,7 @@ type AddTaskModalProps = {
   onSave: (task: Task) => void
 }
 
-// UI layer only: collects the form values and shows errors.
-// The rules for what makes a valid task live in services/taskService.ts.
+// just the form + errors here, task rules are in services/taskService.ts
 function AddTaskModal({ clientNames, projectNames, existingTasks, onClose, onSave }: AddTaskModalProps) {
   const [status, setStatus] = useState<TaskStatus>('todo')
   const [errors, setErrors] = useState<string[]>([])
